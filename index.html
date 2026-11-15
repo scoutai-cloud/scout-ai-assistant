@@ -1,0 +1,199 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scout AI – Your Scout Assistant</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f3f6f3;
+      color: #20352b;
+    }
+
+    header {
+      background: #173d32;
+      color: white;
+      text-align: center;
+      padding: 35px 20px;
+    }
+
+    header h1 { font-size: 38px; margin: 0 0 10px; }
+    header p { margin: 0; }
+
+    main {
+      max-width: 850px;
+      margin: 35px auto;
+      padding: 20px;
+    }
+
+    h2 { text-align: center; }
+
+    .choices {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin: 25px 0;
+    }
+
+    .choice {
+      background: white;
+      border: 2px solid #d5e1d8;
+      border-radius: 14px;
+      padding: 25px 12px;
+      cursor: pointer;
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .choice:hover, .choice.active {
+      border-color: #26734d;
+      background: #e7f2e9;
+    }
+
+    .choice span {
+      display: block;
+      font-size: 35px;
+      margin-bottom: 10px;
+    }
+
+    .panel {
+      background: white;
+      border-radius: 14px;
+      padding: 24px;
+      margin-top: 25px;
+      box-shadow: 0 3px 12px #0000000c;
+    }
+
+    input, button {
+      width: 100%;
+      padding: 13px;
+      margin-top: 12px;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
+    input { border: 1px solid #b9c9bd; }
+
+    button {
+      background: #26734d;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    button:hover { background: #174e35; }
+
+    #status {
+      margin-top: 15px;
+      color: #52685b;
+      line-height: 1.5;
+    }
+
+    footer {
+      text-align: center;
+      padding: 25px;
+      color: #617267;
+      font-size: 13px;
+    }
+
+    @media (max-width: 550px) {
+      .choices { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>⚜ Scout AI</h1>
+    <p>Your personal Scout Advancement Assistant</p>
+    <p>Learn. Practice. Advance.</p>
+  </header>
+
+  <main>
+    <h2>What would you like help with?</h2>
+
+    <div class="choices">
+      <button class="choice" onclick="selectGoal('Merit Badges', this)">
+        <span>🏅</span>
+        Merit Badges
+      </button>
+
+      <button class="choice" onclick="selectGoal('Scout Ranks', this)">
+        <span>⚜️</span>
+        Scout Ranks
+      </button>
+    </div>
+
+    <section class="panel">
+      <h2 id="selection">Choose your goal</h2>
+      <p>Enter the badge or rank and the requirement you are working on.</p>
+
+      <input id="requirement"
+        type="text"
+        placeholder="Example: First Aid – Requirement 1">
+
+      <button onclick="startLearning()">Start learning</button>
+    </section>
+
+    <section class="panel">
+      <h2>💬 Ask Scout AI</h2>
+      <p>Ask questions, request explanations and practise your Scout skills.</p>
+
+      <input id="question"
+        type="text"
+        placeholder="Type your question here...">
+
+      <button onclick="askScout()">Ask Scout AI</button>
+
+      <p id="status">
+        The AI assistant is being built. Its AI engine will be connected soon!
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    Scout AI – An independent educational project.
+    Always check official requirements with your Scout leader or counselor.
+  </footer>
+
+  <script>
+    let selectedGoal = "";
+
+    function selectGoal(goal, button) {
+      selectedGoal = goal;
+      document.getElementById("selection").textContent = goal;
+      document.querySelectorAll(".choice").forEach(b =>
+        b.classList.remove("active")
+      );
+      button.classList.add("active");
+    }
+
+    function startLearning() {
+      const requirement = document.getElementById("requirement").value;
+      if (!selectedGoal || !requirement.trim()) {
+        document.getElementById("status").textContent =
+          "Please choose a goal and enter a requirement first.";
+        return;
+      }
+      document.getElementById("status").textContent =
+        "Your learning path: " + selectedGoal + " – " +
+        requirement + ". The AI learning engine will be connected next.";
+    }
+
+    function askScout() {
+      const question = document.getElementById("question").value;
+      document.getElementById("status").textContent =
+        question.trim()
+        ? "Your question is ready: " + question +
+          ". The AI engine is not connected yet."
+        : "Please enter a question first.";
+    }
+  </script>
+</body>
+</html>
