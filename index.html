@@ -1,12 +1,14 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Scout AI – Your Scout Assistant</title>
+
   <style>
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
 
     body {
       margin: 0;
@@ -22,8 +24,14 @@
       padding: 35px 20px;
     }
 
-    header h1 { font-size: 38px; margin: 0 0 10px; }
-    header p { margin: 0; }
+    header h1 {
+      font-size: 38px;
+      margin: 0 0 10px;
+    }
+
+    header p {
+      margin: 8px 0;
+    }
 
     main {
       max-width: 850px;
@@ -31,7 +39,9 @@
       padding: 20px;
     }
 
-    h2 { text-align: center; }
+    h2 {
+      text-align: center;
+    }
 
     .choices {
       display: grid;
@@ -50,9 +60,11 @@
       font-weight: bold;
     }
 
-    .choice:hover, .choice.active {
+    .choice:hover,
+    .choice.active {
       border-color: #26734d;
       background: #e7f2e9;
+      color: #20352b;
     }
 
     .choice span {
@@ -69,7 +81,8 @@
       box-shadow: 0 3px 12px #0000000c;
     }
 
-    input, button {
+    input,
+    button {
       width: 100%;
       padding: 13px;
       margin-top: 12px;
@@ -77,9 +90,11 @@
       font-size: 16px;
     }
 
-    input { border: 1px solid #b9c9bd; }
+    input {
+      border: 1px solid #b9c9bd;
+    }
 
-    button {
+    .action {
       background: #26734d;
       color: white;
       border: none;
@@ -87,11 +102,26 @@
       font-weight: bold;
     }
 
-    button:hover { background: #174e35; }
+    .action:hover {
+      background: #174e35;
+    }
+
+    .action:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
 
     #status {
-      margin-top: 15px;
-      color: #52685b;
+      margin-top: 18px;
+      color: #20352b;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .small {
+      color: #617267;
+      font-size: 13px;
       line-height: 1.5;
     }
 
@@ -103,12 +133,15 @@
     }
 
     @media (max-width: 550px) {
-      .choices { grid-template-columns: 1fr; }
+      .choices {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
 
 <body>
+
   <header>
     <h1>⚜ Scout AI</h1>
     <p>Your personal Scout Advancement Assistant</p>
@@ -116,6 +149,7 @@
   </header>
 
   <main>
+
     <h2>What would you like help with?</h2>
 
     <div class="choices">
@@ -132,29 +166,49 @@
 
     <section class="panel">
       <h2 id="selection">Choose your goal</h2>
-      <p>Enter the badge or rank and the requirement you are working on.</p>
 
-      <input id="requirement"
+      <p>
+        Enter the badge or rank and the requirement you are working on.
+      </p>
+
+      <input
+        id="requirement"
         type="text"
-        placeholder="Example: First Aid – Requirement 1">
+        placeholder="Example: First Aid – Requirement 1"
+      >
 
-      <button onclick="startLearning()">Start learning</button>
+      <button class="action" id="learnButton" onclick="startLearning()">
+        Start learning
+      </button>
     </section>
 
     <section class="panel">
       <h2>💬 Ask Scout AI</h2>
-      <p>Ask questions, request explanations and practise your Scout skills.</p>
 
-      <input id="question"
+      <p>
+        Ask questions, request explanations and practise your Scout skills.
+      </p>
+
+      <input
+        id="question"
         type="text"
-        placeholder="Type your question here...">
+        placeholder="Type your question here..."
+      >
 
-      <button onclick="askScout()">Ask Scout AI</button>
+      <button class="action" id="askButton" onclick="askScout()">
+        Ask Scout AI
+      </button>
 
-      <p id="status">
-        The AI assistant is being built. Its AI engine will be connected soon!
+      <p id="status" aria-live="polite">
+        Welcome to Scout AI! Choose a goal or ask a question to get started.
+      </p>
+
+      <p class="small">
+        Scout AI is an educational assistant. Always check official
+        requirements with your Scout leader or counselor.
       </p>
     </section>
+
   </main>
 
   <footer>
@@ -164,36 +218,173 @@
 
   <script>
     let selectedGoal = "";
+    let engine = null;
+    let chatHistory = [];
+    let isBusy = false;
+
+    const MODEL = "Qwen2-0.5B-Instruct-q4f16_1-MLC";
+
+    const status = document.getElementById("status");
+    const askButton = document.getElementById("askButton");
+    const learnButton = document.getElementById("learnButton");
 
     function selectGoal(goal, button) {
       selectedGoal = goal;
+
       document.getElementById("selection").textContent = goal;
-      document.querySelectorAll(".choice").forEach(b =>
-        b.classList.remove("active")
-      );
+
+      document.querySelectorAll(".choice").forEach(b => {
+        b.classList.remove("active");
+      });
+
       button.classList.add("active");
     }
 
-    function startLearning() {
-      const requirement = document.getElementById("requirement").value;
-      if (!selectedGoal || !requirement.trim()) {
-        document.getElementById("status").textContent =
-          "Please choose a goal and enter a requirement first.";
+    async function getEngine() {
+      if (engine) {
+        return engine;
+      }
+
+      if (!navigator.gpu) {
+        throw new Error(
+          "WebGPU is not available in this browser. Please try a compatible version of Chrome, Edge or Safari."
+        );
+      }
+
+      status.textContent =
+        "Preparing Scout AI. The first download may take several minutes. Please keep this page open.";
+
+      const webllm = await import(
+        "https://esm.run/@mlc-ai/web-llm"
+      );
+
+      engine = await webllm.CreateMLCEngine(MODEL, {
+        initProgressCallback: (progress) => {
+          status.textContent =
+            "Loading Scout AI: " + progress.text;
+        }
+      });
+
+      return engine;
+    }
+
+    async function askAI(prompt) {
+      if (isBusy) {
         return;
       }
-      document.getElementById("status").textContent =
-        "Your learning path: " + selectedGoal + " – " +
-        requirement + ". The AI learning engine will be connected next.";
+
+      isBusy = true;
+      askButton.disabled = true;
+      learnButton.disabled = true;
+
+      try {
+        const ai = await getEngine();
+
+        status.textContent = "Scout AI is thinking...";
+
+        const messages = [
+          {
+            role: "system",
+            content:
+              "You are Scout AI, a friendly and knowledgeable Boy Scouts educational assistant. Always answer in English. Help young Scouts understand Merit Badges, Scout Ranks, outdoor skills, first aid, leadership, citizenship and teamwork. Explain ideas clearly and step by step, using examples and practice questions. Adapt explanations to the age of the Scout. Never invent official Scout requirements. If a question concerns an official requirement, encourage the Scout to check the current official handbook and ask their Scout leader or merit badge counselor. For dangerous activities, prioritize safety and adult supervision."
+          },
+          ...chatHistory,
+          {
+            role: "user",
+            content: prompt
+          }
+        ];
+
+        const reply = await ai.chat.completions.create({
+          messages: messages,
+          temperature: 0.7,
+          max_tokens: 500
+        });
+
+        const answer = reply.choices[0].message.content;
+
+        chatHistory.push(
+          { role: "user", content: prompt },
+          { role: "assistant", content: answer }
+        );
+
+        if (chatHistory.length > 12) {
+          chatHistory = chatHistory.slice(-12);
+        }
+
+        status.textContent = answer;
+
+      } catch (error) {
+        console.error(error);
+
+        status.textContent =
+          "Scout AI could not start. " +
+          error.message +
+          " Please check your browser and internet connection, then try again.";
+
+      } finally {
+        isBusy = false;
+        askButton.disabled = false;
+        learnButton.disabled = false;
+      }
+    }
+
+    function startLearning() {
+      const requirement =
+        document.getElementById("requirement").value.trim();
+
+      if (!selectedGoal) {
+        status.textContent =
+          "Please choose Merit Badges or Scout Ranks first.";
+        return;
+      }
+
+      if (!requirement) {
+        status.textContent =
+          "Please enter a badge, rank or requirement first.";
+        return;
+      }
+
+      const prompt =
+        "Help me study " + selectedGoal +
+        ". The requirement I am working on is: " +
+        requirement +
+        ". Explain it step by step, give me practical examples, " +
+        "and ask me questions to check my understanding.";
+
+      askAI(prompt);
     }
 
     function askScout() {
-      const question = document.getElementById("question").value;
-      document.getElementById("status").textContent =
-        question.trim()
-        ? "Your question is ready: " + question +
-          ". The AI engine is not connected yet."
-        : "Please enter a question first.";
+      const question =
+        document.getElementById("question").value.trim();
+
+      if (!question) {
+        status.textContent = "Please enter a question first.";
+        return;
+      }
+
+      askAI(question);
     }
+
+    document.getElementById("question").addEventListener(
+      "keydown",
+      function(event) {
+        if (event.key === "Enter") {
+          askScout();
+        }
+      }
+    );
+
+    document.getElementById("requirement").addEventListener(
+      "keydown",
+      function(event) {
+        if (event.key === "Enter") {
+          startLearning();
+        }
+      }
+    );
   </script>
+
 </body>
 </html>
